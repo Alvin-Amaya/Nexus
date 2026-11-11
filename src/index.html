@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/style.css">
     <title>Nexus</title>
 </head>
 <body>
-    <canvas id="gameCanvas" width="640" height="480"></canvas>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+        <div class="ui-layer"></div>
+    </div>
     <script type="module" src="./gameEngine/gameEngine.js"></script>
-    <script type="module" src="./gameEngine/mapLoader.js"></script>
+    <script type="module" src="./gameEngine/loaders.js"></script>
+    <script type="module" src="./gameEngine/characters.js"></script>
     <script type="module" src="./game.js"></script>
 </body>
 </html>
