@@ -1,0 +1,64 @@
+### Extensión "REST Client" de VS Code. Ejecuta de arriba hacia abajo.
+@base = http://localhost:3000
+
+### 1. Registro
+# @name registro
+POST {{base}}/api/auth/registro
+Content-Type: application/json
+
+{ "username": "jugador1", "password": "secreto123" }
+
+###
+@token = {{registro.response.body.token}}
+
+### 2. Criaturas iniciales
+GET {{base}}/api/criaturas/iniciales
+Authorization: Bearer {{token}}
+
+### 3. Crear personaje (usa un id de la lista anterior)
+POST {{base}}/api/personaje
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "Aventurero", "criaturaInicialId": 2 }
+
+### 4. Zona actual
+GET {{base}}/api/mundo/zona-actual
+Authorization: Bearer {{token}}
+
+### 5. Ir a Ruta 01 (zonaId 2)
+POST {{base}}/api/mundo/mover
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "zonaId": 2 }
+
+### 6. Explorar
+POST {{base}}/api/mundo/explorar
+Authorization: Bearer {{token}}
+
+### 7. Atacar (cambia el 1 por el id del encuentro)
+POST {{base}}/api/encuentros/1/atacar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "movimiento": 0 }
+
+### 8. Capturar (objetoId 1 = Capturador básico)
+POST {{base}}/api/encuentros/1/capturar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "objetoId": 1 }
+
+### 9. Equipo / inventario / historial
+GET {{base}}/api/equipo
+Authorization: Bearer {{token}}
+
+###
+GET {{base}}/api/inventario
+Authorization: Bearer {{token}}
+
+###
+GET {{base}}/api/historial
+Authorization: Bearer {{token}}
