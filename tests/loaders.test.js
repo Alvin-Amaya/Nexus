@@ -34,6 +34,10 @@ test('validateMapData rejects malformed map dimensions and elements', () => {
         ...validMap,
         elements: [{ ...validMap.elements[0], tileX: -1 }]
     }), /invalid element/);
+    assert.throws(() => validateMapData({
+        ...validMap,
+        elements: [{ ...validMap.elements[0], width: 1.5 }]
+    }), /invalid element/);
 });
 
 test('mapLoader shares concurrent requests and caches validated data', async t => {

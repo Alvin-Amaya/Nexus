@@ -105,7 +105,13 @@ export class Stage {
     }
 
     render(ctx) {
-        ctx.drawImage(AssetManager.getImage(this.background), 0, 0);
+        ctx.drawImage(
+            AssetManager.getImage(this.background),
+            0,
+            0,
+            this.width,
+            this.height
+        );
         [...this.entities]
             .sort((a, b) => a.renderDepth - b.renderDepth)
             .forEach(entity => entity.draw(ctx));
@@ -231,6 +237,8 @@ export class Element {
         this.tileSize = GAME_CONF.tileSize;
         this.x = this.tileX * this.tileSize;
         this.y = this.tileY * this.tileSize;
+        this.drawWidth = this.width * GAME_CONF.tileSize;
+        this.drawHeight = this.height * GAME_CONF.tileSize;
         this.renderDepth = this.tileY + this.height;
         this.image = AssetManager.getImage(data.image);
     }
@@ -240,8 +248,8 @@ export class Element {
             this.image,
             this.x,
             this.y,
-            this.width * this.tileSize,
-            this.height * this.tileSize
+            this.drawWidth,
+            this.drawHeight
         );
     }
 }

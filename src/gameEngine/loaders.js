@@ -29,8 +29,8 @@ export function validateMapData(mapData, mapName = 'unknown') {
         typeof element.image !== 'string' || element.image.length === 0 ||
         !Number.isInteger(element.tileX) || element.tileX < 0 ||
         !Number.isInteger(element.tileY) || element.tileY < 0 ||
-        (element.width !== undefined && (!Number.isFinite(element.width) || element.width <= 0)) ||
-        (element.height !== undefined && (!Number.isFinite(element.height) || element.height <= 0)))) {
+        (element.width !== undefined && (!Number.isInteger(element.width) || element.width <= 0)) ||
+        (element.height !== undefined && (!Number.isInteger(element.height) || element.height <= 0)))) {
         throw new Error(`Map ${mapName} contains an invalid element`);
     }
     if (elements.some(element =>

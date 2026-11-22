@@ -33,3 +33,19 @@ canvas {
 .hidden {
     display: none !important;
 }
+
+.map-editor-link {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    padding: 8px 12px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #fff;
+    background: #222;
+    text-decoration: none;
+}
+
+.map-editor-link:hover {
+    border-color: #aaa;
+}

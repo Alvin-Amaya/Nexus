@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Stage } from '../src/gameEngine/gameEngine.js';
+import { AssetManager, Element, Stage } from '../src/gameEngine/gameEngine.js';
 
 const spriteConfig = {
     image: {},
@@ -25,6 +25,49 @@ test('Stage treats only tile value 1 and out-of-bounds coordinates as solid', ()
     assert.equal(stage.isSolid(0, 1), false);
     assert.equal(stage.isSolid(-1, 0), true);
     assert.equal(stage.isSolid(0, 2), true);
+});
+
+test('Element scales its image to the configured tile dimensions', () => {
+    const image = {};
+    AssetManager.images.set('wide-tree', image);
+    try {
+        const element = new Element({
+            tileX: 2,
+            tileY: 3,
+            width: 2,
+            height: 3,
+            image: 'wide-tree'
+        });
+        const drawCalls = [];
+        element.draw({
+            drawImage: (...args) => drawCalls.push(args)
+        });
+
+        assert.deepEqual(drawCalls, [[image, 80, 120, 80, 120]]);
+        assert.equal(element.renderDepth, 6);
+    } finally {
+        AssetManager.images.delete('wide-tree');
+    }
+});
+
+test('Stage scales its background to the dimensions of its tile matrix', () => {
+    const background = {};
+    AssetManager.images.set('test-background', background);
+    try {
+        const stage = new Stage({
+            mapMatrix: [[0, 0], [0, 0]],
+            background: 'test-background'
+        });
+        const drawCalls = [];
+
+        stage.render({
+            drawImage: (...args) => drawCalls.push(args)
+        });
+
+        assert.deepEqual(drawCalls, [[background, 0, 0, 80, 80]]);
+    } finally {
+        AssetManager.images.delete('test-background');
+    }
 });
 
 test('Stage rejects a player spawn on a solid or out-of-bounds tile', () => {

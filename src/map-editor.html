@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/map-editor.css">
+    <title>Nexus - Editor de mapas</title>
+</head>
+<body>
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">NEXUS / HERRAMIENTAS</p>
+            <h1>Editor de mapas</h1>
+        </div>
+        <a href="./index.html">Volver al juego</a>
+    </header>
+
+    <main class="editor-layout">
+        <aside class="sidebar" aria-label="Herramientas del mapa">
+            <section class="panel">
+                <h2>Mapa</h2>
+                <label>
+                    Nombre
+                    <input id="map-name" type="text" value="map01">
+                </label>
+                <label>
+                    Imagen de fondo
+                    <input id="map-background" type="text" value="./assets/background.png">
+                </label>
+                <p class="help-text">Las rutas de imagen se resuelven desde la carpeta src, por ejemplo ./assets/background.png.</p>
+                <div class="field-row">
+                    <label>
+                        Ancho (tiles)
+                        <input id="map-width" type="number" min="1" max="200" value="20">
+                    </label>
+                    <label>
+                        Alto (tiles)
+                        <input id="map-height" type="number" min="1" max="200" value="9">
+                    </label>
+                </div>
+                <button id="resize-map" type="button">Aplicar tamaño</button>
+                <button id="import-map" class="button-secondary" type="button">Importar JSON</button>
+                <input id="map-file" class="visually-hidden" type="file" accept=".json,application/json">
+            </section>
+
+            <section class="panel">
+                <h2>Pintar matriz</h2>
+                <div class="tool-list" role="group" aria-label="Herramienta activa">
+                    <button class="tool-button is-active" data-tool="paint" type="button" aria-pressed="true">Pintar tile</button>
+                    <button class="tool-button" data-tool="object" type="button" aria-pressed="false">Colocar imagen</button>
+                    <button class="tool-button" data-tool="erase" type="button" aria-pressed="false">Borrar imagen</button>
+                </div>
+                <label>
+                    Valor del tile
+                    <input id="tile-value" type="number" min="0" step="1" value="1">
+                </label>
+                <p class="help-text">El valor 1 bloquea el paso; los demas valores son transitables.</p>
+            </section>
+
+            <section class="panel">
+                <h2>Imagen colocable</h2>
+                <label>
+                    Ruta de la imagen
+                    <input id="asset-image" type="text" value="./assets/tree.png">
+                </label>
+                <p class="help-text">Usa rutas desde src, por ejemplo ./assets/tree.png.</p>
+                <div class="field-row">
+                    <label>
+                        Ancho (tiles)
+                        <input id="asset-width" type="number" min="1" max="200" value="1">
+                    </label>
+                    <label>
+                        Alto (tiles)
+                        <input id="asset-height" type="number" min="1" max="200" value="1">
+                    </label>
+                </div>
+                <p class="help-text">Elige “Colocar imagen” y haz clic en el tile donde debe comenzar.</p>
+                <h3>Imagenes en el mapa</h3>
+                <ul id="element-list" class="element-list"></ul>
+            </section>
+
+            <section class="panel panel-actions">
+                <button id="export-map" class="button-primary" type="button">Descargar mapa JSON</button>
+                <p id="editor-status" class="status-message" role="status" aria-live="polite"></p>
+            </section>
+        </aside>
+
+        <section class="workspace" aria-label="Vista del mapa">
+            <div class="workspace-heading">
+                <div>
+                    <h2>Vista previa</h2>
+                    <p>Haz clic o arrastra sobre la cuadrícula para pintar.</p>
+                </div>
+                <span id="map-dimensions" class="dimension-badge"></span>
+            </div>
+            <div class="map-scroll">
+                <canvas id="map-canvas" aria-label="Cuadricula editable del mapa"></canvas>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="./mapEditor.js"></script>
+</body>
+</html>
