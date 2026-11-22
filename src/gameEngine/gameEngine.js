@@ -1,5 +1,7 @@
 const GAME_CONF = {
-    tileSize: 40
+    tileSize: 40,
+    viewportWidth: 640,
+    viewportHeight: 480
 };
 
 export class GameEngine {
@@ -27,10 +29,8 @@ export class GameEngine {
         const stage = this.stages.get(name);
         if (!stage) throw new Error(`Stage ${name} not found`);
 
+        stage.setViewport(this.canvas.width, this.canvas.height);
         stage.load(gameState, this.input);
-        this.canvas.width = stage.width;
-        this.canvas.height = stage.height;
-        this.ctx.imageSmoothingEnabled = false;
         this.currentStage = stage;
     }
 
@@ -63,6 +63,41 @@ export class GameEngine {
     }
 }
 
+export class Camera {
+    constructor(
+        worldWidth,
+        worldHeight,
+        viewportWidth = GAME_CONF.viewportWidth,
+        viewportHeight = GAME_CONF.viewportHeight
+    ) {
+        this.worldWidth = worldWidth;
+        this.worldHeight = worldHeight;
+        this.setViewport(viewportWidth, viewportHeight);
+        this.x = 0;
+        this.y = 0;
+    }
+
+    setViewport(width, height) {
+        if (!Number.isFinite(width) || width <= 0 ||
+            !Number.isFinite(height) || height <= 0) {
+            throw new Error('Camera viewport dimensions must be positive numbers');
+        }
+
+        this.viewportWidth = width;
+        this.viewportHeight = height;
+    }
+
+    follow(target) {
+        const targetCenterX = target.x + (target.tileSize ?? 0) / 2;
+        const targetCenterY = target.y + (target.tileSize ?? 0) / 2;
+        const maxX = Math.max(0, this.worldWidth - this.viewportWidth);
+        const maxY = Math.max(0, this.worldHeight - this.viewportHeight);
+
+        this.x = Math.min(Math.max(0, targetCenterX - this.viewportWidth / 2), maxX);
+        this.y = Math.min(Math.max(0, targetCenterY - this.viewportHeight / 2), maxY);
+    }
+}
+
 export class Stage {
     constructor(mapData) {
         this.mapMatrix = mapData.mapMatrix;
@@ -70,8 +105,14 @@ export class Stage {
         this.mapElements = mapData.elements || [];
         this.width = this.mapMatrix[0].length * GAME_CONF.tileSize;
         this.height = this.mapMatrix.length * GAME_CONF.tileSize;
+        this.camera = new Camera(this.width, this.height);
         this.engine = null;
         this.entities = [];
+        this.player = null;
+    }
+
+    setViewport(width, height) {
+        this.camera.setViewport(width, height);
     }
 
     load(gameState, input) {
@@ -83,15 +124,18 @@ export class Stage {
 
         const player = new Player(gameState.player, input);
         player.currentStage = this;
+        this.player = player;
         this.entities = [
             ...this.mapElements.map(elementData => new Element(elementData)),
             ...(gameState.elements || []).map(elementData => new Element(elementData)),
             player
         ];
+        this.camera.follow(player);
     }
 
     update(dt) {
         this.entities.forEach(entity => entity.update?.(dt));
+        if (this.player) this.camera.follow(this.player);
     }
 
     isSolid(tileX, tileY) {
@@ -105,16 +149,26 @@ export class Stage {
     }
 
     render(ctx) {
-        ctx.drawImage(
-            AssetManager.getImage(this.background),
-            0,
-            0,
-            this.width,
-            this.height
-        );
-        [...this.entities]
-            .sort((a, b) => a.renderDepth - b.renderDepth)
-            .forEach(entity => entity.draw(ctx));
+        ctx.clearRect(0, 0, this.camera.viewportWidth, this.camera.viewportHeight);
+        ctx.save();
+        try {
+            ctx.translate(
+                this.camera.x === 0 ? 0 : -this.camera.x,
+                this.camera.y === 0 ? 0 : -this.camera.y
+            );
+            ctx.drawImage(
+                AssetManager.getImage(this.background),
+                0,
+                0,
+                this.width,
+                this.height
+            );
+            [...this.entities]
+                .sort((a, b) => a.renderDepth - b.renderDepth)
+                .forEach(entity => entity.draw(ctx));
+        } finally {
+            ctx.restore();
+        }
     }
 }
 
