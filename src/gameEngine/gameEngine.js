@@ -1,39 +1,65 @@
 const GAME_CONF = {
     tileSize: 40
-}
+};
 
 export class GameEngine {
-    constructor(canvas) {
-        this.canvas = document.getElementById(canvas);
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) throw new Error(`Canvas "${canvasId}" not found`);
+
         this.ctx = this.canvas.getContext('2d');
+        if (!this.ctx) throw new Error(`Canvas "${canvasId}" does not support 2D rendering`);
+
         this.ctx.imageSmoothingEnabled = false;
-        this.stages = {};
+        this.stages = new Map();
         this.currentStage = null;
+        this.input = new InputHandler();
+        this.isRunning = false;
+        this.animationFrameId = null;
     }
 
     addStage(name, stage) {
-        this.stages[name] = stage;
+        this.stages.set(name, stage);
         stage.engine = this;
     }
 
     changeStage(name, gameState) {
-        if (!this.stages[name]) throw new Error(`Stage ${name} not found`);
-        this.currentStage = this.stages[name];
-        this.currentStage.load(gameState);
+        const stage = this.stages.get(name);
+        if (!stage) throw new Error(`Stage ${name} not found`);
+
+        stage.load(gameState, this.input);
+        this.canvas.width = stage.width;
+        this.canvas.height = stage.height;
+        this.ctx.imageSmoothingEnabled = false;
+        this.currentStage = stage;
     }
 
     start() {
-        let lastTime = 0;
+        if (this.isRunning) return;
+        this.isRunning = true;
+        let lastTime = null;
+
         const loop = timestamp => {
-            let dt = (timestamp - lastTime) / 1000;
+            if (!this.isRunning) return;
+            const dt = lastTime === null ? 0 : Math.min((timestamp - lastTime) / 1000, 0.1);
             lastTime = timestamp;
+
             if (this.currentStage) {
-                this.currentStage.update(dt, this);
+                this.currentStage.update(dt);
                 this.currentStage.render(this.ctx);
             }
-            window.requestAnimationFrame(loop);
+            this.animationFrameId = window.requestAnimationFrame(loop);
         };
-        window.requestAnimationFrame(loop);
+
+        this.animationFrameId = window.requestAnimationFrame(loop);
+    }
+
+    stop() {
+        this.isRunning = false;
+        if (this.animationFrameId !== null) {
+            window.cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
     }
 }
 
@@ -41,29 +67,38 @@ export class Stage {
     constructor(mapData) {
         this.mapMatrix = mapData.mapMatrix;
         this.background = mapData.background;
+        this.mapElements = mapData.elements || [];
+        this.width = this.mapMatrix[0].length * GAME_CONF.tileSize;
+        this.height = this.mapMatrix.length * GAME_CONF.tileSize;
         this.engine = null;
         this.entities = [];
     }
 
-    load(gameState) {
-        this.entities = [];
-        const player = new Player(gameState.player);
+    load(gameState, input) {
+        if (!gameState?.player) throw new Error('Game state must include a player');
+        const { x, y } = gameState.player;
+        if (!Number.isInteger(x) || !Number.isInteger(y) || this.isSolid(x, y)) {
+            throw new Error('Player must start on a walkable map tile');
+        }
+
+        const player = new Player(gameState.player, input);
         player.currentStage = this;
-        this.entities.push(player);
-        gameState?.elements?.forEach(elData => {
-            const element = new Element(elData);
-            this.entities.push(element);
-        });
+        this.entities = [
+            ...this.mapElements.map(elementData => new Element(elementData)),
+            ...(gameState.elements || []).map(elementData => new Element(elementData)),
+            player
+        ];
     }
-    
+
     update(dt) {
-        this.entities.forEach(entity => entity?.update(dt));
+        this.entities.forEach(entity => entity.update?.(dt));
     }
 
     isSolid(tileX, tileY) {
         if (!Number.isInteger(tileX) || !Number.isInteger(tileY) ||
             tileX < 0 || tileY < 0 ||
-            tileX >= this.mapMatrix[0].length || tileY >= this.mapMatrix.length) {
+            tileY >= this.mapMatrix.length ||
+            tileX >= this.mapMatrix[tileY].length) {
             return true;
         }
         return this.mapMatrix[tileY][tileX] === 1;
@@ -71,41 +106,58 @@ export class Stage {
 
     render(ctx) {
         ctx.drawImage(AssetManager.getImage(this.background), 0, 0);
-        this.entities.forEach(entity => entity?.draw(ctx));
+        [...this.entities]
+            .sort((a, b) => a.renderDepth - b.renderDepth)
+            .forEach(entity => entity.draw(ctx));
     }
 }
 
 export const AssetManager = {
-    images: {},
+    images: new Map(),
+    imageLoads: new Map(),
 
     loadImage(key, src) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                this.images[key] = img;
-                resolve(img);
+        if (this.images.has(key)) return Promise.resolve(this.images.get(key));
+        if (this.imageLoads.has(key)) return this.imageLoads.get(key);
+
+        const imageLoad = new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => {
+                this.images.set(key, image);
+                this.imageLoads.delete(key);
+                resolve(image);
             };
-            img.onerror = () => reject(new Error(`Failed to load image ${src}`));
-            img.src = src;
+            image.onerror = () => {
+                this.imageLoads.delete(key);
+                reject(new Error(`Failed to load image "${src}" for asset "${key}"`));
+            };
+            image.src = src;
         });
+
+        this.imageLoads.set(key, imageLoad);
+        return imageLoad;
     },
 
     getImage(key) {
-        const image = this.images[key];
+        const image = this.images.get(key);
         if (!image) throw new Error(`Image asset "${key}" has not been loaded`);
         return image;
-    },
-}
+    }
+};
 
 export class InputHandler {
     constructor() {
-        this.keys = {};
-        window.addEventListener("keydown", e => this.keys[e.key] = true);
-        window.addEventListener("keyup", e => this.keys[e.key] = false);
+        this.keys = new Set();
+        window.addEventListener('keydown', event => {
+            if (event.key.startsWith('Arrow')) event.preventDefault();
+            this.keys.add(event.key);
+        });
+        window.addEventListener('keyup', event => this.keys.delete(event.key));
+        window.addEventListener('blur', () => this.keys.clear());
     }
 
     isDown(key) {
-        return !!this.keys[key];
+        return this.keys.has(key);
     }
 }
 
@@ -118,7 +170,7 @@ class SpriteAnimator {
         this.currentAnimation = null;
         this.currentFrame = 0;
         this.timer = 0;
-        this.frameInterval = .15;
+        this.frameInterval = 0.15;
         this.isPlaying = false;
     }
 
@@ -141,32 +193,25 @@ class SpriteAnimator {
 
     update(dt) {
         if (!this.isPlaying) return;
-        const anim = this.animations[this.currentAnimation];
-        if (!anim) {
-            throw new Error(`Animation "${this.currentAnimation}" not found`);
-        }
+        const animation = this.animations[this.currentAnimation];
+        if (!animation) throw new Error(`Animation "${this.currentAnimation}" not found`);
+
         this.timer += dt;
         if (this.timer >= this.frameInterval) {
             const framesToAdvance = Math.floor(this.timer / this.frameInterval);
-            this.currentFrame = (this.currentFrame + framesToAdvance) % anim.frames;
+            this.currentFrame = (this.currentFrame + framesToAdvance) % animation.frames;
             this.timer %= this.frameInterval;
         }
     }
 
     draw(ctx, x, y, width = this.fw, height = this.fh) {
-        const anim = this.animations[this.currentAnimation];
+        const animation = this.animations[this.currentAnimation];
+        if (!animation) throw new Error(`Animation "${this.currentAnimation}" not found`);
 
-        if (!anim) {
-            console.warn(`Animation "${this.currentAnimation}" not found.`);
-            return;
-        }
-
-        const srcX = this.currentFrame * this.fw;
-        const srcY = anim.row * this.fh;
         ctx.drawImage(
             this.spriteSheet,
-            srcX,
-            srcY,
+            this.currentFrame * this.fw,
+            animation.row * this.fh,
             this.fw,
             this.fh,
             x,
@@ -181,16 +226,23 @@ export class Element {
     constructor(data) {
         this.tileX = data.tileX;
         this.tileY = data.tileY;
-        this.width = data.width || 1;
-        this.height = data.height || 1;
+        this.width = data.width ?? 1;
+        this.height = data.height ?? 1;
         this.tileSize = GAME_CONF.tileSize;
         this.x = this.tileX * this.tileSize;
         this.y = this.tileY * this.tileSize;
+        this.renderDepth = this.tileY + this.height;
         this.image = AssetManager.getImage(data.image);
     }
 
     draw(ctx) {
-        ctx.drawImage(this.image, this.x, this.y, this.width * this.tileSize, this.height * this.tileSize);
+        ctx.drawImage(
+            this.image,
+            this.x,
+            this.y,
+            this.width * this.tileSize,
+            this.height * this.tileSize
+        );
     }
 }
 
@@ -199,8 +251,9 @@ export class Entity {
         this.tileX = tileX;
         this.tileY = tileY;
         this.tileSize = GAME_CONF.tileSize;
-        this.x = tileX * GAME_CONF.tileSize;
-        this.y = tileY * GAME_CONF.tileSize;
+        this.x = tileX * this.tileSize;
+        this.y = tileY * this.tileSize;
+        this.renderDepth = tileY + 1;
         this.speed = 128;
         this.direction = 'down';
         this.isMoving = false;
@@ -209,9 +262,7 @@ export class Entity {
         this.animator = animator;
     }
 
-    update(dt) {
-
-    }
+    update() {}
 
     draw(ctx) {
         const scale = Math.min(
@@ -231,8 +282,16 @@ export class Entity {
 }
 
 export class Player extends Entity {
-    constructor(state) {
-        const sprite = state.spriteConfig;
+    constructor(state, input = new InputHandler()) {
+        const sprite = state?.spriteConfig;
+        if (!sprite ||
+            !Number.isInteger(sprite.frameWidth) || sprite.frameWidth <= 0 ||
+            !Number.isInteger(sprite.frameHeight) || sprite.frameHeight <= 0 ||
+            !Number.isInteger(sprite.frameCount) || sprite.frameCount <= 0 ||
+            !sprite.image) {
+            throw new Error('Player must have a valid spriteConfig');
+        }
+
         const animations = {
             walkdown: { frames: sprite.frameCount, row: 0 },
             walkup: { frames: sprite.frameCount, row: 1 },
@@ -241,18 +300,18 @@ export class Player extends Entity {
             idledown: { frames: 1, row: 0 },
             idleup: { frames: 1, row: 1 },
             idleleft: { frames: 1, row: 2 },
-            idleright: { frames: 1, row: 3 },
+            idleright: { frames: 1, row: 3 }
         };
-        super(state.x, state.y);
-        this.animator = new SpriteAnimator(
+        const animator = new SpriteAnimator(
             sprite.image,
             sprite.frameWidth,
             sprite.frameHeight,
             animations
         );
+        super(state.x, state.y, animator);
         this.animator.currentAnimation = 'idledown';
         this.speed = 100;
-        this.input = new InputHandler();
+        this.input = input;
         this.currentStage = null;
     }
 
@@ -260,23 +319,20 @@ export class Player extends Entity {
         if (!this.isMoving) {
             let dx = 0;
             let dy = 0;
-            let newDir = this.direction;
             if (this.input.isDown('ArrowLeft')) {
                 dx = -1;
-                newDir = 'left';
+                this.direction = 'left';
             } else if (this.input.isDown('ArrowRight')) {
                 dx = 1;
-                newDir = 'right';
-            }
-            if (this.input.isDown('ArrowUp')) {
+                this.direction = 'right';
+            } else if (this.input.isDown('ArrowUp')) {
                 dy = -1;
-                newDir = 'up';
+                this.direction = 'up';
             } else if (this.input.isDown('ArrowDown')) {
                 dy = 1;
-                newDir = 'down';
+                this.direction = 'down';
             }
 
-            this.direction = newDir;
             if (dx !== 0 || dy !== 0) {
                 const newTileX = this.tileX + dx;
                 const newTileY = this.tileY + dy;
@@ -308,6 +364,7 @@ export class Player extends Entity {
             }
         }
 
+        this.renderDepth = this.y / this.tileSize + 1;
         this.animator.update(dt);
     }
 }

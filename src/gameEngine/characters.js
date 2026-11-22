@@ -36,62 +36,212 @@ const PALS = {
 };
 
 const characters = {};
-function generateChar(key){
-  const s = 1;
-  const cv = document.createElement('canvas'); 
-  cv.width = 48*s;
-  cv.height = 96*s; 
-  const ctx = cv.getContext('2d');
-  ['down','up','left','right'].forEach((dir,di) => { for(let f=0;f<3;f++){ ctx.save(); ctx.translate(f*16, di*24); drawChar(ctx, dir, f, PALS[key]); ctx.restore(); } });
-  characters[key] = cv;
-  return cv;
+const DIRECTIONS = ['down', 'up', 'left', 'right'];
+const FRAME_COUNT = 3;
+const FRAME_WIDTH = 16;
+const FRAME_HEIGHT = 24;
+
+function generateChar(key) {
+    const canvas = document.createElement('canvas');
+    canvas.width = FRAME_WIDTH * FRAME_COUNT;
+    canvas.height = FRAME_HEIGHT * DIRECTIONS.length;
+
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Unable to create a character sprite canvas');
+
+    DIRECTIONS.forEach((direction, row) => {
+        for (let frame = 0; frame < FRAME_COUNT; frame += 1) {
+            context.save();
+            context.translate(frame * FRAME_WIDTH, row * FRAME_HEIGHT);
+            drawChar(context, direction, frame, PALS[key]);
+            context.restore();
+        }
+    });
+
+    characters[key] = canvas;
+    return canvas;
 }
 
+function mix(hex, amount) {
+    const color = Number.parseInt(hex.slice(1), 16);
+    const red = (color >> 16) & 255;
+    const green = (color >> 8) & 255;
+    const blue = color & 255;
+    const target = amount < 0 ? 0 : 255;
+    const ratio = Math.abs(amount);
 
-function mix(hex, amt){
-  const n = parseInt(hex.slice(1),16); let r=n>>16, g=(n>>8)&255, b=n&255, t = amt<0?0:255, p = Math.abs(amt);
-  r=Math.round((t-r)*p+r); g=Math.round((t-g)*p+g); b=Math.round((t-b)*p+b);
-  return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
-}
- 
-  
-function drawChar(ctx, dir, f, p){
-  const R = (x,y,w,h,c) => { ctx.fillStyle = c; ctx.fillRect(x,y,w,h); };
-  const skin = p.skin, hair = p.hair, shirt = p.shirt, dsh = mix(shirt,-.25), pants = p.pants, ex = p.ex || [], shoe = '#2a2230';
-  const side = dir === 'left' || dir === 'right', back = dir === 'up', fl = dir === 'left';
-  ctx.globalAlpha = .25; R(3,21,10,2,'#000'); ctx.globalAlpha = 1;
-  const l1 = f===1?1:0, l2 = f===2?1:0;
-  if(side){ R(6,17-l1,3,3,pants); R(6,20-l1,3,1,shoe); R(8,17-l2,3,3,mix(pants,-.2)); R(8,20-l2,3,1,shoe); }
-  else { R(5,17-l1,3,3,pants); R(5,20-l1,3,1,shoe); R(8,17-l2,3,3,pants); R(8,20-l2,3,1,shoe); }
-  if(ex.includes('cape') && back) R(3,10,10,9,p.exc||'#7a5aa8');
-  R(4,10,8,7,shirt); R(4,15,8,2,dsh);
-  if(side){ R(7,11,3,5,dsh); R(7,15,3,1,skin); } else { R(3,11,1,5,shirt); R(12,11,1,5,shirt); R(3,15,1,1,skin); R(12,15,1,1,skin); }
-  if(ex.includes('coat')) { R(3,10,10,8,'#f4f6f8'); R(4,10,8,1,'#d4dae0'); if(!back && !side) R(7,10,2,8,shirt); }
-  if(ex.includes('apron') && !back){ if(side) R(fl?5:9,11,2,6,'#f4f1e8'); else { R(5,11,6,6,'#f4f1e8'); R(5,16,6,1,'#d8d0c0'); } }
-  if(ex.includes('scarf')) R(4,9,8,2,p.exc||'#d84a3a');
-  if(ex.includes('cape') && !back) { R(3,10,1,7,p.exc||'#7a5aa8'); R(12,10,1,7,p.exc||'#7a5aa8'); }
-  R(4,2,8,8,skin); ctx.clearRect(4,2,1,1); ctx.clearRect(11,2,1,1); ctx.clearRect(4,9,1,1); ctx.clearRect(11,9,1,1);
-  const hs = p.hs; const noHair = p.hat==='hood';
-  if(!noHair){
-    if(back){ R(3,1,10,9,hair); if(hs==='long') R(3,9,10,4,hair); if(hs==='bun') R(6,0,4,2,hair); }
-    else if(side){ R(3,1,10,3,hair); const bx = dir==='left'?8:3; if(hs!=='bald') R(bx,3,5,6,hair); if(hs==='long') R(bx,9,5,4,hair); if(hs==='bun') R(6,0,4,2,hair); R(dir==='left'?3:12,3,1,2,hair); }
-    else { if(hs!=='bald'){ R(3,1,10,3,hair); R(3,3,1,3,hair); R(12,3,1,3,hair); R(4,3,8,1,hair); } else { R(3,3,1,3,hair); R(12,3,1,3,hair); } if(hs==='long'){ R(3,3,2,8,hair); R(11,3,2,8,hair); } if(hs==='bun') R(6,0,4,2,hair); }
-  }
-  if(!back){
-    const ey = '#18181c';
-    if(side){ R(dir==='left'?5:10,6,1,2,ey); } else { R(6,6,1,2,ey); R(9,6,1,2,ey); R(7,8,2,1,'#b5705a'); }
-    if(ex.includes('glasses')){ if(side) R(dir==='left'?4:9,5,3,3,'#cfe8ff'), R(dir==='left'?5:10,6,1,2,ey); else { R(5,5,6,1,'#333'); R(5,6,2,2,'#cfe8ff'); R(9,6,2,2,'#cfe8ff'); R(6,6,1,2,ey); R(9,6,1,2,ey); } }
-    if(ex.includes('beard')){ if(side) R(dir==='left'?4:8,8,4,3,hair==='#3a2a1a'?'#5a4a3a':'#e8e8e8'); else R(5,8,6,3,hair==='#3a2a1a'||hair==='#3a2a1a'?'#5a4a3a':'#e8e8e8'); }
-  }
-  const hc = p.hc;
-  if(p.hat === 'cap'){ R(3,0,10,3,hc); R(3,3,10,1,mix(hc,-.3)); if(side) R(dir==='left'?1:9,3,6,1,mix(hc,-.3)); }
-  if(p.hat === 'hat'){ R(5,0,6,3,hc); R(2,3,12,1,mix(hc,-.25)); R(5,2,6,1,mix(hc,-.4)); }
-  if(p.hat === 'bandana'){ R(3,1,10,2,hc); if(!side) R(12,2,2,2,hc); else R(dir==='left'?11:3,2,2,2,hc); }
-  if(p.hat === 'helmet'){ R(3,0,10,4,hc); R(5,1,2,1,mix(hc,.5)); R(3,4,10,1,mix(hc,-.3)); }
-  if(p.hat === 'hood'){ R(3,1,10,3,hc); R(3,3,1,7,hc); R(12,3,1,7,hc); if(back) R(3,1,10,10,hc); R(4,3,8,1,mix(hc,-.3)); }
+    return `#${[red, green, blue]
+        .map(channel => Math.round((target - channel) * ratio + channel)
+            .toString(16)
+            .padStart(2, '0'))
+        .join('')}`;
 }
 
-export function getCharacter(key){
-    if(!characters[key]) generateChar(key);
+function drawChar(context, direction, frame, palette) {
+    const rectangle = (x, y, width, height, color) => {
+        context.fillStyle = color;
+        context.fillRect(x, y, width, height);
+    };
+    const { skin, hair, shirt, pants, ex = [] } = palette;
+    const darkerShirt = mix(shirt, -0.25);
+    const shoe = '#2a2230';
+    const isSide = direction === 'left' || direction === 'right';
+    const isBack = direction === 'up';
+    const isLeft = direction === 'left';
+    const leftLegOffset = frame === 1 ? 1 : 0;
+    const rightLegOffset = frame === 2 ? 1 : 0;
+
+    context.globalAlpha = 0.25;
+    rectangle(3, 21, 10, 2, '#000');
+    context.globalAlpha = 1;
+
+    if (isSide) {
+        rectangle(6, 17 - leftLegOffset, 3, 3, pants);
+        rectangle(6, 20 - leftLegOffset, 3, 1, shoe);
+        rectangle(8, 17 - rightLegOffset, 3, 3, mix(pants, -0.2));
+        rectangle(8, 20 - rightLegOffset, 3, 1, shoe);
+    } else {
+        rectangle(5, 17 - leftLegOffset, 3, 3, pants);
+        rectangle(5, 20 - leftLegOffset, 3, 1, shoe);
+        rectangle(8, 17 - rightLegOffset, 3, 3, pants);
+        rectangle(8, 20 - rightLegOffset, 3, 1, shoe);
+    }
+
+    if (ex.includes('cape') && isBack) {
+        rectangle(3, 10, 10, 9, palette.exc || '#7a5aa8');
+    }
+    rectangle(4, 10, 8, 7, shirt);
+    rectangle(4, 15, 8, 2, darkerShirt);
+
+    if (isSide) {
+        rectangle(7, 11, 3, 5, darkerShirt);
+        rectangle(7, 15, 3, 1, skin);
+    } else {
+        rectangle(3, 11, 1, 5, shirt);
+        rectangle(12, 11, 1, 5, shirt);
+        rectangle(3, 15, 1, 1, skin);
+        rectangle(12, 15, 1, 1, skin);
+    }
+
+    if (ex.includes('coat')) {
+        rectangle(3, 10, 10, 8, '#f4f6f8');
+        rectangle(4, 10, 8, 1, '#d4dae0');
+        if (!isBack && !isSide) rectangle(7, 10, 2, 8, shirt);
+    }
+    if (ex.includes('apron') && !isBack) {
+        if (isSide) {
+            rectangle(isLeft ? 5 : 9, 11, 2, 6, '#f4f1e8');
+        } else {
+            rectangle(5, 11, 6, 6, '#f4f1e8');
+            rectangle(5, 16, 6, 1, '#d8d0c0');
+        }
+    }
+    if (ex.includes('scarf')) rectangle(4, 9, 8, 2, palette.exc || '#d84a3a');
+    if (ex.includes('cape') && !isBack) {
+        rectangle(3, 10, 1, 7, palette.exc || '#7a5aa8');
+        rectangle(12, 10, 1, 7, palette.exc || '#7a5aa8');
+    }
+
+    rectangle(4, 2, 8, 8, skin);
+    context.clearRect(4, 2, 1, 1);
+    context.clearRect(11, 2, 1, 1);
+    context.clearRect(4, 9, 1, 1);
+    context.clearRect(11, 9, 1, 1);
+
+    const hairstyle = palette.hs;
+    if (palette.hat !== 'hood') {
+        if (isBack) {
+            rectangle(3, 1, 10, 9, hair);
+            if (hairstyle === 'long') rectangle(3, 9, 10, 4, hair);
+            if (hairstyle === 'bun') rectangle(6, 0, 4, 2, hair);
+        } else if (isSide) {
+            const sideHairX = isLeft ? 8 : 3;
+            rectangle(3, 1, 10, 3, hair);
+            if (hairstyle !== 'bald') rectangle(sideHairX, 3, 5, 6, hair);
+            if (hairstyle === 'long') rectangle(sideHairX, 9, 5, 4, hair);
+            if (hairstyle === 'bun') rectangle(6, 0, 4, 2, hair);
+            rectangle(isLeft ? 3 : 12, 3, 1, 2, hair);
+        } else {
+            if (hairstyle !== 'bald') {
+                rectangle(3, 1, 10, 3, hair);
+                rectangle(3, 3, 1, 3, hair);
+                rectangle(12, 3, 1, 3, hair);
+                rectangle(4, 3, 8, 1, hair);
+            } else {
+                rectangle(3, 3, 1, 3, hair);
+                rectangle(12, 3, 1, 3, hair);
+            }
+            if (hairstyle === 'long') {
+                rectangle(3, 3, 2, 8, hair);
+                rectangle(11, 3, 2, 8, hair);
+            }
+            if (hairstyle === 'bun') rectangle(6, 0, 4, 2, hair);
+        }
+    }
+
+    if (!isBack) {
+        const eyeColor = '#18181c';
+        if (isSide) {
+            rectangle(isLeft ? 5 : 10, 6, 1, 2, eyeColor);
+        } else {
+            rectangle(6, 6, 1, 2, eyeColor);
+            rectangle(9, 6, 1, 2, eyeColor);
+            rectangle(7, 8, 2, 1, '#b5705a');
+        }
+        if (ex.includes('glasses')) {
+            if (isSide) {
+                rectangle(isLeft ? 4 : 9, 5, 3, 3, '#cfe8ff');
+                rectangle(isLeft ? 5 : 10, 6, 1, 2, eyeColor);
+            } else {
+                rectangle(5, 5, 6, 1, '#333');
+                rectangle(5, 6, 2, 2, '#cfe8ff');
+                rectangle(9, 6, 2, 2, '#cfe8ff');
+                rectangle(6, 6, 1, 2, eyeColor);
+                rectangle(9, 6, 1, 2, eyeColor);
+            }
+        }
+        if (ex.includes('beard')) {
+            const beardColor = hair === '#3a2a1a' ? '#5a4a3a' : '#e8e8e8';
+            if (isSide) {
+                rectangle(isLeft ? 4 : 8, 8, 4, 3, beardColor);
+            } else {
+                rectangle(5, 8, 6, 3, beardColor);
+            }
+        }
+    }
+
+    const hatColor = palette.hc;
+    if (palette.hat === 'cap') {
+        rectangle(3, 0, 10, 3, hatColor);
+        rectangle(3, 3, 10, 1, mix(hatColor, -0.3));
+        if (isSide) rectangle(isLeft ? 1 : 9, 3, 6, 1, mix(hatColor, -0.3));
+    }
+    if (palette.hat === 'hat') {
+        rectangle(5, 0, 6, 3, hatColor);
+        rectangle(2, 3, 12, 1, mix(hatColor, -0.25));
+        rectangle(5, 2, 6, 1, mix(hatColor, -0.4));
+    }
+    if (palette.hat === 'bandana') {
+        rectangle(3, 1, 10, 2, hatColor);
+        if (!isSide) rectangle(12, 2, 2, 2, hatColor);
+        else rectangle(isLeft ? 11 : 3, 2, 2, 2, hatColor);
+    }
+    if (palette.hat === 'helmet') {
+        rectangle(3, 0, 10, 4, hatColor);
+        rectangle(5, 1, 2, 1, mix(hatColor, 0.5));
+        rectangle(3, 4, 10, 1, mix(hatColor, -0.3));
+    }
+    if (palette.hat === 'hood') {
+        rectangle(3, 1, 10, 3, hatColor);
+        rectangle(3, 3, 1, 7, hatColor);
+        rectangle(12, 3, 1, 7, hatColor);
+        if (isBack) rectangle(3, 1, 10, 10, hatColor);
+        rectangle(4, 3, 8, 1, mix(hatColor, -0.3));
+    }
+}
+
+export function getCharacter(key) {
+    if (!Object.hasOwn(PALS, key)) throw new Error(`Character "${key}" not found`);
+    if (!characters[key]) generateChar(key);
     return characters[key];
 }
