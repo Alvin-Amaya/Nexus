@@ -16,11 +16,13 @@ const gameState = {
     },
 }
 
-await AssetManager.loadImage('player', './assets/player.png');
-await AssetManager.loadImage('background', './assets/background.png');
 
 const gameEngine = new GameEngine('gameCanvas');
-mapLoader.loadMap('test').then(mapData => {
+mapLoader.loadMap('test').then(async mapData => {
+    await AssetManager.loadImage(mapData.background, mapData.background);
+    mapData.elements.forEach(async elData => {
+        await AssetManager.loadImage(elData.image, elData.image);
+    });
     const stage = new Stage(mapData);
     gameEngine.addStage('test', stage);
     gameEngine.changeStage('test', gameState);

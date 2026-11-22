@@ -186,7 +186,7 @@ export class Element {
         this.tileSize = GAME_CONF.tileSize;
         this.x = this.tileX * this.tileSize;
         this.y = this.tileY * this.tileSize;
-        this.image = data.image;
+        this.image = AssetManager.getImage(data.image);
     }
 
     draw(ctx) {
