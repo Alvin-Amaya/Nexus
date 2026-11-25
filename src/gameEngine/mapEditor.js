@@ -1,4 +1,4 @@
-import { validateMapData } from './gameEngine/loaders.js';
+import { validateMapData } from './loaders.js';
 
 const TILE_SIZE = 32;
 const MAX_MAP_SIZE = 200;

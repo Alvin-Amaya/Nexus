@@ -15,7 +15,7 @@ const gameState = {
     }
 };
 
-async function startGame() {
+export async function startGame(canvasId = 'gameCanvas', signal) {
     const mapData = await mapLoader.loadMap('test');
     const assets = [
         [mapData.background, mapData.background],
@@ -23,12 +23,11 @@ async function startGame() {
     ];
     await Promise.all(assets.map(([key, source]) => AssetManager.loadImage(key, source)));
 
-    const gameEngine = new GameEngine('gameCanvas');
+    if (signal?.aborted) return null;
+
+    const gameEngine = new GameEngine(canvasId);
     gameEngine.addStage('test', new Stage(mapData));
     gameEngine.changeStage('test', gameState);
     gameEngine.start();
+    return gameEngine;
 }
-
-startGame().catch(error => {
-    console.error('Unable to start the game:', error);
-});

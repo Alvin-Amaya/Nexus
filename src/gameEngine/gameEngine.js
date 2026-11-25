@@ -14,8 +14,8 @@ export class GameEngine {
 
         this.ctx.imageSmoothingEnabled = false;
         this.stages = new Map();
-        this.currentStage = null;
         this.input = new InputHandler();
+        this.currentStage = null;
         this.isRunning = false;
         this.animationFrameId = null;
     }
