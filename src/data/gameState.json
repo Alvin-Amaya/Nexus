@@ -3,12 +3,9 @@
         "name": "Player1",
         "level": 1,
         "health": 100,
-        "spriteConfig": {
-            "skin": "hero0",
-            "frameWidth": 16,
-            "frameHeight": 24,
-            "frameCount": 3
-        }
+        "skin": "hero0",
+        "items": [],
+        "squad": []
     },
     "mapName": "http://localhost:5173/src/data/map01.json"
 }

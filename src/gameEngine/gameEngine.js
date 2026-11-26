@@ -4,7 +4,12 @@ import { mapLoader } from "./loaders";
 const GAME_CONF = {
     tileSize: 40,
     viewportWidth: 640,
-    viewportHeight: 480
+    viewportHeight: 480,  
+    spriteConfig: {
+        "frameWidth": 16,
+        "frameHeight": 24,
+        "frameCount": 3
+    }
 };
 
 export class GameEngine {
@@ -126,9 +131,15 @@ export class Stage {
         if (!Number.isInteger(tileX) || !Number.isInteger(tileY) || this.isSolid(tileX, tileY)) {
             throw new Error('Player must start on a walkable map tile');
         }
-        gameState.player.x = tileX;
-        gameState.player.y = tileY;
-        const player = new Player(gameState.player, input);
+
+        const playerData = {
+            ...gameState.player,
+            x: tileX,
+            y: tileY,
+            spriteConfig: GAME_CONF.spriteConfig
+        }
+
+        const player = new Player(playerData, input);
         player.currentStage = this;
         this.player = player;
         this.entities = [
