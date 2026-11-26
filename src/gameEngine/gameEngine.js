@@ -1,3 +1,5 @@
+import { getCharacter } from "./characters";
+
 const GAME_CONF = {
     tileSize: 40,
     viewportWidth: 640,
@@ -205,6 +207,14 @@ export const AssetManager = {
     }
 };
 
+export async function loadAssets(mapData) {
+    const assets = [
+        [mapData.background, mapData.background],
+        ...mapData.elements.map(element => [element.image, element.image])
+    ];
+    await Promise.all(assets.map(([key, source]) => AssetManager.loadImage(key, source)));
+}
+
 export class InputHandler {
     constructor() {
         this.keys = new Set();
@@ -350,7 +360,7 @@ export class Player extends Entity {
             !Number.isInteger(sprite.frameWidth) || sprite.frameWidth <= 0 ||
             !Number.isInteger(sprite.frameHeight) || sprite.frameHeight <= 0 ||
             !Number.isInteger(sprite.frameCount) || sprite.frameCount <= 0 ||
-            !sprite.image) {
+            !sprite.skin) {
             throw new Error('Player must have a valid spriteConfig');
         }
 
@@ -365,7 +375,7 @@ export class Player extends Entity {
             idleright: { frames: 1, row: 3 }
         };
         const animator = new SpriteAnimator(
-            sprite.image,
+            getCharacter(sprite.skin),
             sprite.frameWidth,
             sprite.frameHeight,
             animations

@@ -1,0 +1,13 @@
+{
+    "player": {
+        "x": 1,
+        "y": 2,
+        "spriteConfig": {
+            "skin": "hero0",
+            "frameWidth": 16,
+            "frameHeight": 24,
+            "frameCount": 3
+        }
+    },
+    "mapName": "http://localhost:5173/src/data/map01.json"
+}

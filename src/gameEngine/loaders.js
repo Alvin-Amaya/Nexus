@@ -1,7 +1,4 @@
-const mapUrls = {
-    home: '/api/maps/home',
-    test: new URL('../data/map01.json', import.meta.url).href
-};
+import { loadAssets } from "./gameEngine";
 
 export function validateMapData(mapData, mapName = 'unknown') {
     if (!mapData || typeof mapData !== 'object') {
@@ -45,26 +42,26 @@ export function validateMapData(mapData, mapName = 'unknown') {
 export const mapLoader = {
     maps: new Map(),
 
-    async loadMap(name) {
-        if (mapLoader.maps.has(name)) return mapLoader.maps.get(name);
+    async loadMap(map) {
+        if (mapLoader.maps.has(map)) return mapLoader.maps.get(map);
 
-        const url = mapUrls[name];
-        if (!url) throw new Error(`Map ${name} not found`);
-
-        const request = fetch(url)
+        const request = fetch(map)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Failed to load map ${name}: ${response.status} ${response.statusText}`);
+                    throw new Error(`Failed to load map ${map}: ${response.status} ${response.statusText}`);
                 }
                 return response.json();
             })
-            .then(mapData => validateMapData(mapData, name))
+            .then(mapData => {
+                validateMapData(mapData, map)
+                return loadAssets(mapData).then(() => mapData);
+            })
             .catch(error => {
-                mapLoader.maps.delete(name);
+                mapLoader.maps.delete(map);
                 throw error;
             });
 
-        mapLoader.maps.set(name, request);
+        mapLoader.maps.set(map, request);
         return request;
     }
 };
