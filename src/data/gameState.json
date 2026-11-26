@@ -7,5 +7,8 @@
         "items": [],
         "squad": []
     },
-    "mapName": "http://localhost:5173/src/data/map01.json"
+    "currentMap": {
+        "name": "map01",
+        "url": "http://localhost:5173/src/data/map01.json"
+    }
 }
