@@ -6,9 +6,9 @@ const GAME_CONF = {
     viewportWidth: 640,
     viewportHeight: 480,  
     spriteConfig: {
-        "frameWidth": 16,
-        "frameHeight": 24,
-        "frameCount": 3
+        frameWidth: 16,
+        frameHeight: 24,
+        frameCount: 3
     }
 };
 
@@ -136,9 +136,12 @@ export class Stage {
             ...gameState.player,
             x: tileX,
             y: tileY,
-            spriteConfig: GAME_CONF.spriteConfig
+            spriteConfig:{ 
+                ...GAME_CONF.spriteConfig,
+                skin: gameState.player.skin
+            }
         }
-
+        
         const player = new Player(playerData, input);
         player.currentStage = this;
         this.player = player;
