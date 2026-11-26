@@ -1,7 +1,8 @@
 {
     "player": {
-        "x": 1,
-        "y": 2,
+        "name": "Player1",
+        "level": 1,
+        "health": 100,
         "spriteConfig": {
             "skin": "hero0",
             "frameWidth": 16,

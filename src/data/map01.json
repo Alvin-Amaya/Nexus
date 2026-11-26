@@ -12,6 +12,10 @@
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ],
     "background": "http://localhost:5173/src/assets/background.png",
+    "playerStart": {
+        "tileX": 2,
+        "tileY": 5
+    },
     "elements": [
         {
             "type": "tree",

@@ -1,4 +1,5 @@
 import { getCharacter } from "./characters";
+import { mapLoader } from "./loaders";
 
 const GAME_CONF = {
     tileSize: 40,
@@ -7,7 +8,7 @@ const GAME_CONF = {
 };
 
 export class GameEngine {
-    constructor(canvasId) {
+    constructor(canvasId, state) {
         this.canvas = document.getElementById(canvasId);
         if (!this.canvas) throw new Error(`Canvas "${canvasId}" not found`);
 
@@ -20,6 +21,7 @@ export class GameEngine {
         this.currentStage = null;
         this.isRunning = false;
         this.animationFrameId = null;
+        this.gameState = state;
     }
 
     addStage(name, stage) {
@@ -27,12 +29,12 @@ export class GameEngine {
         stage.engine = this;
     }
 
-    changeStage(name, gameState) {
+    changeStage(name) {
         const stage = this.stages.get(name);
         if (!stage) throw new Error(`Stage ${name} not found`);
 
         stage.setViewport(this.canvas.width, this.canvas.height);
-        stage.load(gameState, this.input);
+        stage.load(this.gameState, this.input);
         this.currentStage = stage;
     }
 
@@ -111,6 +113,7 @@ export class Stage {
         this.engine = null;
         this.entities = [];
         this.player = null;
+        this.playerStart = mapData.playerStart || { tileX: 0, tileY: 0 };
     }
 
     setViewport(width, height) {
@@ -119,11 +122,12 @@ export class Stage {
 
     load(gameState, input) {
         if (!gameState?.player) throw new Error('Game state must include a player');
-        const { x, y } = gameState.player;
-        if (!Number.isInteger(x) || !Number.isInteger(y) || this.isSolid(x, y)) {
+        const { tileX, tileY } = this.playerStart;
+        if (!Number.isInteger(tileX) || !Number.isInteger(tileY) || this.isSolid(tileX, tileY)) {
             throw new Error('Player must start on a walkable map tile');
         }
-
+        gameState.player.x = tileX;
+        gameState.player.y = tileY;
         const player = new Player(gameState.player, input);
         player.currentStage = this;
         this.player = player;
@@ -438,5 +442,28 @@ export class Player extends Entity {
 
         this.renderDepth = this.y / this.tileSize + 1;
         this.animator.update(dt);
+    }
+}
+
+export class Portal {
+    constructor(data) {
+        this.engine = data.engine;
+        this.targetStageName = data.targetStageName;
+        this.isLocked = data.isLocked ?? true;
+        this.targetStage = null;
+    }
+
+    async unlock() {
+        const dataMap = await mapLoader.loadMap(this.targetStageName);
+        if (!dataMap || typeof dataMap !== 'object') {
+            return // TODO: send message: player cannot access to this map
+        }
+        this.targetStage = new Stage(dataMap);
+        this.engine.addStage(this.targetStageName, this.targetStage);
+    }
+
+    open() {
+        if (this.isLocked) return;
+        this.engine.changeStage(this.targetStage);
     }
 }
